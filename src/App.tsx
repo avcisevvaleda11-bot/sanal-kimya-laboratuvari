@@ -1,5 +1,7 @@
+
 import { useState } from 'react';
 import { Beaker, Atom, FlaskConical, Search, Plus, Trash2 } from 'lucide-react';
+import LabScene from './LabScene';
 
 const substances = [
   { name: 'Su', formula: 'H₂O', type: 'Bileşik' },
@@ -64,19 +66,12 @@ export default function App() {
 
         <section className="panel experiment">
           <div className="panel-title">
-            <h3><FlaskConical size={19} /> Deney alanı</h3>
-            <span>ETKİLEŞİMLİ ALAN</span>
+            <h3><FlaskConical size={19} /> 3D deney alanı</h3>
+            <span>ETKİLEŞİMLİ MODEL</span>
           </div>
-          <div className="lab-scene">
-            <div className="glow"></div>
-            <div className="flask">
-              <div className="flask-neck"></div>
-              <div className="liquid"></div>
-              <div className="bubble one"></div>
-              <div className="bubble two"></div>
-            </div>
-            <p>Deneyini oluşturmaya başla</p>
-          </div>
+
+          <LabScene />
+
           <div className="selected-title">SEÇİLEN MADDELER</div>
           {selected.length === 0 ? (
             <p className="empty">Kütüphaneden madde ekleyebilirsin.</p>
@@ -90,7 +85,7 @@ export default function App() {
         </section>
       </div>
 
-      <footer> SANAL KİMYA LABORATUVARI · EĞİTİM VE BİLİM</footer>
+      <footer>SANAL KİMYA LABORATUVARI · EĞİTİM VE BİLİM</footer>
     </main>
   );
 }
