@@ -1,5 +1,6 @@
 
 import { useMemo, useRef, useState } from 'react';
+import type { PointerEvent } from 'react';
 import {
   Atom,
   FlaskConical,
@@ -8,9 +9,14 @@ import {
   Trash2,
   X,
   Beaker,
-  Pipette,
   RotateCcw,
-  Grip
+  Grip,
+  Thermometer,
+  Scale,
+  Gauge,
+  Flame,
+  Pipette,
+  Waves
 } from 'lucide-react';
 
 import LabScene from './LabScene';
@@ -35,14 +41,27 @@ type LabObject = {
   symbol: string;
   x: number;
   y: number;
+  containerId?: string;
+  canContain?: boolean;
 };
 
 const equipmentList = [
-  { name: 'Beher', symbol: '⚗️' },
-  { name: 'Erlenmayer', symbol: '🧪' },
-  { name: 'Deney tüpü', symbol: '🧫' },
-  { name: 'Pipet', symbol: '💧' },
-  { name: 'Mezür', symbol: '🥛' }
+  { name: 'Beher', symbol: '⚗️', canContain: true },
+  { name: 'Erlenmayer', symbol: '🧪', canContain: true },
+  { name: 'Deney tüpü', symbol: '🧫', canContain: true },
+  { name: 'Mezür', symbol: '🥛', canContain: true },
+  { name: 'Pipet', symbol: '💧', canContain: false },
+  { name: 'Termometre', symbol: '🌡️', canContain: false },
+  { name: 'Hassas terazi', symbol: '⚖️', canContain: false },
+  { name: 'pH metre', symbol: '📟', canContain: false },
+  { name: 'Manyetik karıştırıcı', symbol: '🌀', canContain: false },
+  { name: 'Isıtıcı tabla', symbol: '♨️', canContain: false },
+  { name: 'Huni', symbol: '🔻', canContain: false },
+  { name: 'Cam baget', symbol: '🥢', canContain: false },
+  { name: 'Saat camı', symbol: '◯', canContain: false },
+  { name: 'Spatül', symbol: '🥄', canContain: false },
+  { name: 'Deney tüpü standı', symbol: '🧪', canContain: false },
+  { name: 'Yıkama şişesi', symbol: '🚿', canContain: false }
 ];
 
 export default function App() {
@@ -94,11 +113,11 @@ export default function App() {
     const width = board?.clientWidth ?? 700;
 
     const newObject: LabObject = {
-      id: `substance-${Date.now()}-${objects.length}`,
+      id: `substance-${Date.now()}-${Math.random()}`,
       kind: 'substance',
       substance,
       symbol: '💧',
-      x: Math.max(15, width / 2 - 55 + (objects.length % 4) * 18),
+      x: Math.max(10, width / 2 - 50 + (objects.length % 4) * 18),
       y: 45 + (objects.length % 4) * 22
     };
 
@@ -111,21 +130,19 @@ export default function App() {
     const width = board?.clientWidth ?? 700;
 
     const newObject: LabObject = {
-      id: `equipment-${Date.now()}-${objects.length}`,
+      id: `equipment-${Date.now()}-${Math.random()}`,
       kind: 'equipment',
       equipment: equipment.name,
       symbol: equipment.symbol,
-      x: Math.max(15, width / 2 - 65 + (objects.length % 4) * 22),
+      canContain: equipment.canContain,
+      x: Math.max(10, width / 2 - 65 + (objects.length % 4) * 22),
       y: 135 + (objects.length % 3) * 24
     };
 
     setObjects(old => [...old, newObject]);
   }
 
-  function moveObject(
-    id: string,
-    event: React.PointerEvent<HTMLDivElement>
-  ) {
+  function moveObject(id: string, event: PointerEvent<HTMLDivElement>) {
     const board = boardRef.current;
     if (!board) return;
 
@@ -133,7 +150,7 @@ export default function App() {
 
     const x = Math.max(
       5,
-      Math.min(rect.width - 110, event.clientX - rect.left - 48)
+      Math.min(rect.width - 145, event.clientX - rect.left - 50)
     );
 
     const y = Math.max(
@@ -148,6 +165,87 @@ export default function App() {
     );
   }
 
+  function finishDrag(id: string, event: PointerEvent<HTMLDivElement>) {
+    const board = boardRef.current;
+    if (!board) {
+      setDraggingId(null);
+      return;
+    }
+
+    const rect = board.getBoundingClientRect();
+    const pointX = event.clientX - rect.left;
+    const pointY = event.clientY - rect.top;
+
+    const dragged = objects.find(item => item.id === id);
+
+    if (dragged?.kind === 'substance') {
+      const target = objects.find(item => {
+        if (item.kind !== 'equipment' || !item.canContain || item.id === id) {
+          return false;
+        }
+
+        const contents = objects.filter(
+          child => child.containerId === item.id
+        );
+
+        const height = 105 + contents.length * 25;
+
+        return (
+          pointX >= item.x &&
+          pointX <= item.x + 145 &&
+          pointY >= item.y &&
+          pointY <= item.y + height
+        );
+      });
+
+      if (target) {
+        setObjects(old =>
+          old.map(item =>
+            item.id === id
+              ? { ...item, containerId: target.id }
+              : item
+          )
+        );
+      }
+    }
+
+    setDraggingId(null);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function startDrag(
+    item: LabObject,
+    event: PointerEvent<HTMLDivElement>
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (item.containerId) {
+      const parent = objects.find(
+        object => object.id === item.containerId
+      );
+
+      setObjects(old =>
+        old.map(object =>
+          object.id === item.id
+            ? {
+                ...object,
+                containerId: undefined,
+                x: (parent?.x ?? item.x) + 15,
+                y: (parent?.y ?? item.y) + 45
+              }
+            : object
+        )
+      );
+    }
+
+    setDraggingId(item.id);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
   function analyzeReaction() {
     const result = findReaction(
       selectedSubstances.map(item => item.formula)
@@ -156,13 +254,53 @@ export default function App() {
   }
 
   function removeObject(id: string) {
-    setObjects(old => old.filter(item => item.id !== id));
+    const removed = objects.find(item => item.id === id);
+
+    setObjects(old =>
+      old
+        .filter(item => item.id !== id)
+        .map(item =>
+          item.containerId === id
+            ? {
+                ...item,
+                containerId: undefined,
+                x: (removed?.x ?? item.x) + 15,
+                y: (removed?.y ?? item.y) + 45
+              }
+            : item
+        )
+    );
+
     setReactionResult(null);
   }
 
   function clearBoard() {
     setObjects([]);
     setReactionResult(null);
+  }
+
+  function getContainedItems(containerId: string) {
+    return objects.filter(item => item.containerId === containerId);
+  }
+
+  function getObjectPosition(item: LabObject) {
+    if (!item.containerId) {
+      return { x: item.x, y: item.y };
+    }
+
+    const parent = objects.find(object => object.id === item.containerId);
+
+    if (!parent) {
+      return { x: item.x, y: item.y };
+    }
+
+    const contents = getContainedItems(item.containerId);
+    const index = contents.findIndex(object => object.id === item.id);
+
+    return {
+      x: parent.x + 13,
+      y: parent.y + 48 + index * 25
+    };
   }
 
   return (
@@ -202,10 +340,7 @@ export default function App() {
               placeholder="Madde veya formül ara..."
             />
             {search && (
-              <button
-                onClick={() => setSearch('')}
-                aria-label="Aramayı temizle"
-              >
+              <button onClick={() => setSearch('')} aria-label="Aramayı temizle">
                 <X size={16} />
               </button>
             )}
@@ -278,14 +413,11 @@ export default function App() {
                 {' '}Deney masası
               </h3>
               <small style={{ color: '#91aaa9' }}>
-                Nesneleri parmağınla tutup istediğin yere taşı.
+                Maddeleri tutup kapların içine bırakabilirsin.
               </small>
             </div>
 
-            <button
-              className="clear"
-              onClick={clearBoard}
-            >
+            <button className="clear" onClick={clearBoard}>
               <RotateCcw size={15} />
               Masayı temizle
             </button>
@@ -296,7 +428,7 @@ export default function App() {
             style={{
               position: 'relative',
               width: '100%',
-              minHeight: 440,
+              minHeight: 520,
               overflow: 'hidden',
               borderRadius: 16,
               border: '1px solid #28545a',
@@ -342,114 +474,150 @@ export default function App() {
                 pointerEvents: 'none'
               }}>
                 <Beaker size={48} strokeWidth={1} />
-                <h3 style={{ marginBottom: 5 }}>
-                  Deney masan hazır
-                </h3>
+                <h3 style={{ marginBottom: 5 }}>Deney masan hazır</h3>
                 <p style={{ fontSize: 13, maxWidth: 260 }}>
-                  Soldaki kütüphaneden madde veya aşağıdaki
-                  araçlardan ekipman ekleyerek başla.
+                  Madde ve ekipman ekleyerek deneyini oluşturmaya başla.
                 </p>
               </div>
             )}
 
-            {objects.map(item => (
-              <div
-                key={item.id}
-                onPointerDown={event => {
-                  event.preventDefault();
-                  setDraggingId(item.id);
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                }}
-                onPointerMove={event => {
-                  if (draggingId === item.id) {
-                    moveObject(item.id, event);
-                  }
-                }}
-                onPointerUp={event => {
-                  setDraggingId(null);
-                  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                    event.currentTarget.releasePointerCapture(event.pointerId);
-                  }
-                }}
-                onPointerCancel={() => setDraggingId(null)}
-                style={{
-                  position: 'absolute',
-                  left: item.x,
-                  top: item.y,
-                  width: 100,
-                  minHeight: 76,
-                  borderRadius: 13,
-                  border: draggingId === item.id
-                    ? '2px solid #8ce6d1'
-                    : '1px solid #56858a',
-                  background: item.kind === 'substance'
-                    ? 'linear-gradient(145deg, #1c5056, #10343d)'
-                    : 'linear-gradient(145deg, #31515b, #1a343e)',
-                  color: '#effffb',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                  padding: 7,
-                  boxSizing: 'border-box',
-                  cursor: draggingId === item.id ? 'grabbing' : 'grab',
-                  userSelect: 'none',
-                  touchAction: 'none',
-                  zIndex: draggingId === item.id ? 10 : 2,
-                  boxShadow: draggingId === item.id
-                    ? '0 8px 25px #0009'
-                    : '0 4px 12px #0005'
-                }}
-              >
-                <button
-                  onPointerDown={event => event.stopPropagation()}
-                  onClick={event => {
-                    event.stopPropagation();
-                    removeObject(item.id);
+            {objects.map(item => {
+              const position = getObjectPosition(item);
+              const contained = Boolean(item.containerId);
+              const contents = item.kind === 'equipment'
+                ? getContainedItems(item.id)
+                : [];
+
+              const containerHeight = 105 + contents.length * 25;
+
+              return (
+                <div
+                  key={item.id}
+                  data-object-id={item.id}
+                  onPointerDown={event => startDrag(item, event)}
+                  onPointerMove={event => {
+                    if (draggingId === item.id) {
+                      moveObject(item.id, event);
+                    }
                   }}
-                  aria-label="Nesneyi kaldır"
+                  onPointerUp={event => finishDrag(item.id, event)}
+                  onPointerCancel={() => setDraggingId(null)}
                   style={{
                     position: 'absolute',
-                    top: 3,
-                    right: 4,
-                    border: 0,
-                    background: 'transparent',
-                    color: '#d4eeea',
-                    padding: 2,
-                    cursor: 'pointer'
+                    left: position.x,
+                    top: position.y,
+                    width: contained ? 112 : item.kind === 'equipment' ? 145 : 105,
+                    minHeight: contained ? 22 : item.kind === 'equipment' ? containerHeight : 76,
+                    borderRadius: contained ? 7 : 13,
+                    border: draggingId === item.id
+                      ? '2px solid #8ce6d1'
+                      : contained
+                        ? '1px solid #77bdb0'
+                        : '1px solid #56858a',
+                    background: contained
+                      ? 'linear-gradient(145deg, #286b69, #16464b)'
+                      : item.kind === 'substance'
+                        ? 'linear-gradient(145deg, #1c5056, #10343d)'
+                        : 'linear-gradient(145deg, #31515b, #1a343e)',
+                    color: '#effffb',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    padding: contained ? 4 : 7,
+                    boxSizing: 'border-box',
+                    cursor: draggingId === item.id ? 'grabbing' : 'grab',
+                    userSelect: 'none',
+                    touchAction: 'none',
+                    zIndex: draggingId === item.id ? 20 : contained ? 5 : 2,
+                    boxShadow: draggingId === item.id
+                      ? '0 8px 25px #0009'
+                      : '0 4px 12px #0005'
                   }}
                 >
-                  <X size={13} />
-                </button>
+                  <button
+                    onPointerDown={event => event.stopPropagation()}
+                    onClick={event => {
+                      event.stopPropagation();
+                      removeObject(item.id);
+                    }}
+                    aria-label="Nesneyi kaldır"
+                    style={{
+                      position: 'absolute',
+                      top: 3,
+                      right: 4,
+                      border: 0,
+                      background: 'transparent',
+                      color: '#d4eeea',
+                      padding: 2,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
 
-                <span style={{ fontSize: 25 }}>
-                  {item.kind === 'substance'
-                    ? '🧴'
-                    : item.symbol}
-                </span>
+                  {contained ? (
+                    <div style={{
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontSize: 10
+                    }}>
+                      <span>💧</span>
+                      <b>{item.substance?.formula}</b>
+                    </div>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 25 }}>
+                        {item.kind === 'substance' ? '🧴' : item.symbol}
+                      </span>
 
-                <b style={{
-                  fontSize: 12,
-                  textAlign: 'center',
-                  overflowWrap: 'anywhere'
-                }}>
-                  {item.kind === 'substance'
-                    ? item.substance?.formula
-                    : item.equipment}
-                </b>
+                      <b style={{
+                        fontSize: 12,
+                        textAlign: 'center',
+                        overflowWrap: 'anywhere'
+                      }}>
+                        {item.kind === 'substance'
+                          ? item.substance?.formula
+                          : item.equipment}
+                      </b>
 
-                <small style={{
-                  color: '#b6d5d0',
-                  fontSize: 9,
-                  textAlign: 'center'
-                }}>
-                  {item.kind === 'substance'
-                    ? item.substance?.name
-                    : 'Deney ekipmanı'}
-                </small>
-              </div>
-            ))}
+                      <small style={{
+                        color: '#b6d5d0',
+                        fontSize: 9,
+                        textAlign: 'center'
+                      }}>
+                        {item.kind === 'substance'
+                          ? item.substance?.name
+                          : item.canContain
+                            ? `${contents.length} madde içinde`
+                            : 'Deney ekipmanı'}
+                      </small>
+
+                      {item.kind === 'equipment' && item.canContain && (
+                        <div style={{
+                          width: '90%',
+                          minHeight: 20,
+                          marginTop: 4,
+                          borderTop: '1px dashed #8eb6b0',
+                          paddingTop: 5,
+                          color: '#bde8df',
+                          fontSize: 9,
+                          textAlign: 'center'
+                        }}>
+                          {contents.length > 0
+                            ? contents.map(child => child.substance?.formula).join(' · ')
+                            : 'Madde bırak'}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })}
 
             <div style={{
               position: 'absolute',
@@ -495,9 +663,9 @@ export default function App() {
                   }}>
                     {equipment.symbol}
                   </span>
-                  <b style={{ fontSize: 12 }}>
-                    {equipment.name}
-                  </b>
+
+                  <b style={{ fontSize: 12 }}>{equipment.name}</b>
+
                   <small style={{
                     display: 'block',
                     color: '#8eb6b0',
@@ -522,20 +690,19 @@ export default function App() {
               </p>
             ) : (
               selectedSubstances.map((item, index) => (
-                <div
-                  className="selected-item"
-                  key={`${item.id}-${index}`}
-                >
+                <div className="selected-item" key={`${item.id}-${index}`}>
                   <span>
                     <b>{item.formula}</b> — {item.name}
                     {item.molarMass !== undefined && (
                       <small> · {item.molarMass} g/mol</small>
                     )}
                   </span>
+
                   <button
                     onClick={() => {
                       const object = objects.filter(
-                        entry => entry.kind === 'substance' &&
+                        entry =>
+                          entry.kind === 'substance' &&
                           entry.substance?.id === item.id
                       )[index];
 
