@@ -1,6 +1,6 @@
-
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
+
 import {
   Atom,
   FlaskConical,
@@ -14,10 +14,8 @@ import {
   Play,
   Pause,
   RotateCw,
-  Thermometer,
   Waves,
-  CheckCircle2,
-  FlaskRound
+  CheckCircle2
 } from 'lucide-react';
 
 import LabScene from './LabScene';
@@ -71,18 +69,22 @@ const simulationStyles = `
   35% { opacity: .9; }
   100% { transform: translateY(-65px) scale(1.1); opacity: 0; }
 }
+
 @keyframes labPrecipitate {
   0% { transform: translateY(-22px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 }
+
 @keyframes labHeat {
   0%, 100% { opacity: .35; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.08); }
 }
+
 @keyframes labPulse {
   0%, 100% { box-shadow: 0 0 0 rgba(93, 220, 190, 0); }
   50% { box-shadow: 0 0 24px rgba(93, 220, 190, .25); }
 }
+
 .lab-bubble {
   position: absolute;
   bottom: 12px;
@@ -93,15 +95,19 @@ const simulationStyles = `
   background: #8de9db66;
   animation: labBubble 1.8s infinite ease-out;
 }
+
 .lab-bubble:nth-child(2) { animation-delay: .4s; left: 35%; }
 .lab-bubble:nth-child(3) { animation-delay: .8s; left: 60%; }
 .lab-bubble:nth-child(4) { animation-delay: 1.1s; left: 75%; }
+
 .lab-precipitate {
   animation: labPrecipitate 1.2s ease-out both;
 }
+
 .lab-heat {
   animation: labHeat 1.6s infinite ease-in-out;
 }
+
 .lab-active {
   animation: labPulse 2s infinite ease-in-out;
 }
@@ -110,10 +116,13 @@ const simulationStyles = `
 export default function App() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Tümü');
+
   const [objects, setObjects] = useState<LabObject[]>([]);
   const [reactionResult, setReactionResult] = useState<any>(null);
+
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [selectedContainerId, setSelectedContainerId] = useState('');
+
   const [stageIndex, setStageIndex] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [simulationFinished, setSimulationFinished] = useState(false);
@@ -141,7 +150,9 @@ export default function App() {
     const text = `${item.name} ${item.formula} ${item.type}`
       .toLocaleLowerCase('tr');
 
-    const matchesSearch = text.includes(search.toLocaleLowerCase('tr'));
+    const matchesSearch = text.includes(
+      search.toLocaleLowerCase('tr')
+    );
 
     const matchesCategory =
       category === 'Tümü' ||
@@ -161,14 +172,6 @@ export default function App() {
     ? selectedContainerId
     : containers[0]?.id ?? '';
 
-  const activeContainer = containers.find(
-    item => item.id === activeContainerId
-  );
-
-  const selectedSubstances = objects
-    .filter(item => item.kind === 'substance' && item.substance)
-    .map(item => item.substance as Substance);
-
   const containerSubstances = objects
     .filter(
       item =>
@@ -178,29 +181,46 @@ export default function App() {
     )
     .map(item => item.substance as Substance);
 
+  const selectedSubstances = objects
+    .filter(item => item.kind === 'substance' && item.substance)
+    .map(item => item.substance as Substance);
+
   const experimentSteps: string[] =
     reactionResult?.experimentSteps ?? [];
 
+  const effects = reactionResult?.effects;
+
+  // Simülasyon zamanlayıcısı
   useEffect(() => {
-    if (!isRunning || !reactionResult?.found || experimentSteps.length === 0) {
+    if (!isRunning || !reactionResult?.found) {
       return;
     }
 
-    const timer = window.setInterval(() => {
-      setStageIndex(current => {
-        if (current + 1 >= experimentSteps.length) {
-          window.clearInterval(timer);
-          setIsRunning(false);
-          setSimulationFinished(true);
-          return current;
-        }
+    if (experimentSteps.length === 0) {
+      setIsRunning(false);
+      setSimulationFinished(true);
+      return;
+    }
 
-        return current + 1;
-      });
+    if (stageIndex >= experimentSteps.length) {
+      setIsRunning(false);
+      setSimulationFinished(true);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setStageIndex(current =>
+        Math.min(current + 1, experimentSteps.length)
+      );
     }, 1800);
 
-    return () => window.clearInterval(timer);
-  }, [isRunning, reactionResult, experimentSteps.length]);
+    return () => window.clearTimeout(timer);
+  }, [
+    isRunning,
+    stageIndex,
+    experimentSteps.length,
+    reactionResult
+  ]);
 
   function resetSimulation() {
     setIsRunning(false);
@@ -217,7 +237,10 @@ export default function App() {
       kind: 'substance',
       substance,
       symbol: '💧',
-      x: Math.max(10, width / 2 - 50 + (objects.length % 4) * 18),
+      x: Math.max(
+        10,
+        width / 2 - 50 + (objects.length % 4) * 18
+      ),
       y: 45 + (objects.length % 4) * 22
     };
 
@@ -236,7 +259,10 @@ export default function App() {
       equipment: equipment.name,
       symbol: equipment.symbol,
       canContain: equipment.canContain,
-      x: Math.max(10, width / 2 - 65 + (objects.length % 4) * 22),
+      x: Math.max(
+        10,
+        width / 2 - 65 + (objects.length % 4) * 22
+      ),
       y: 135 + (objects.length % 3) * 24
     };
 
@@ -247,7 +273,10 @@ export default function App() {
     }
   }
 
-  function moveObject(id: string, event: PointerEvent<HTMLDivElement>) {
+  function moveObject(
+    id: string,
+    event: PointerEvent<HTMLDivElement>
+  ) {
     const board = boardRef.current;
     if (!board) return;
 
@@ -255,12 +284,18 @@ export default function App() {
 
     const x = Math.max(
       5,
-      Math.min(rect.width - 145, event.clientX - rect.left - 50)
+      Math.min(
+        rect.width - 145,
+        event.clientX - rect.left - 50
+      )
     );
 
     const y = Math.max(
       5,
-      Math.min(rect.height - 100, event.clientY - rect.top - 35)
+      Math.min(
+        rect.height - 100,
+        event.clientY - rect.top - 35
+      )
     );
 
     setObjects(old =>
@@ -270,7 +305,10 @@ export default function App() {
     );
   }
 
-  function finishDrag(id: string, event: PointerEvent<HTMLDivElement>) {
+  function finishDrag(
+    id: string,
+    event: PointerEvent<HTMLDivElement>
+  ) {
     const board = boardRef.current;
 
     if (!board) {
@@ -279,6 +317,7 @@ export default function App() {
     }
 
     const rect = board.getBoundingClientRect();
+
     const pointX = event.clientX - rect.left;
     const pointY = event.clientY - rect.top;
 
@@ -357,6 +396,7 @@ export default function App() {
     }
 
     setDraggingId(item.id);
+
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
@@ -366,6 +406,7 @@ export default function App() {
         found: false,
         message: 'Analiz için aynı kabın içinde en az iki madde bulunmalıdır.'
       });
+
       resetSimulation();
       return;
     }
@@ -412,7 +453,9 @@ export default function App() {
   }
 
   function getContainedItems(containerId: string) {
-    return objects.filter(item => item.containerId === containerId);
+    return objects.filter(
+      item => item.containerId === containerId
+    );
   }
 
   function getObjectPosition(item: LabObject) {
@@ -420,14 +463,19 @@ export default function App() {
       return { x: item.x, y: item.y };
     }
 
-    const parent = objects.find(object => object.id === item.containerId);
+    const parent = objects.find(
+      object => object.id === item.containerId
+    );
 
     if (!parent) {
       return { x: item.x, y: item.y };
     }
 
     const contents = getContainedItems(item.containerId);
-    const index = contents.findIndex(object => object.id === item.id);
+
+    const index = contents.findIndex(
+      object => object.id === item.id
+    );
 
     return {
       x: parent.x + 13,
@@ -435,7 +483,18 @@ export default function App() {
     };
   }
 
-  const effects = reactionResult?.effects;
+  function startSimulation() {
+    if (!reactionResult?.found || experimentSteps.length === 0) {
+      return;
+    }
+
+    if (simulationFinished) {
+      setStageIndex(0);
+      setSimulationFinished(false);
+    }
+
+    setIsRunning(true);
+  }
 
   return (
     <main className="app" style={{ minHeight: '100vh' }}>
@@ -449,6 +508,7 @@ export default function App() {
             <p>Bilimsel keşif alanı</p>
           </div>
         </div>
+
         <span className="status">● LABORATUVAR HAZIR</span>
       </header>
 
@@ -462,6 +522,8 @@ export default function App() {
       </section>
 
       <div className="workspace">
+
+        {/* MADDE KÜTÜPHANESİ */}
         <section className="panel library">
           <div className="panel-title">
             <h3><Atom size={19} /> Madde kütüphanesi</h3>
@@ -470,11 +532,13 @@ export default function App() {
 
           <div className="search">
             <Search size={17} />
+
             <input
               value={search}
               onChange={event => setSearch(event.target.value)}
               placeholder="Madde veya formül ara..."
             />
+
             {search && (
               <button
                 onClick={() => setSearch('')}
@@ -506,26 +570,32 @@ export default function App() {
                 title="Deney masasına ekle"
               >
                 <span className="formula">{item.formula}</span>
+
                 <span className="substance-info">
                   <b>{item.name}</b>
                   <small>{item.type}</small>
                 </span>
+
                 <Plus size={17} />
               </button>
             ))}
 
             {filtered.length === 0 && (
-              <p className="empty">Aradığın madde bulunamadı.</p>
+              <p className="empty">
+                Aradığın madde bulunamadı.
+              </p>
             )}
           </div>
         </section>
 
+        {/* DENEY ALANI */}
         <section className="panel experiment">
           <div className="panel-title">
             <h3>
               <FlaskConical size={19} />
               Deney laboratuvarı
             </h3>
+
             <span>ETKİLEŞİMLİ ÇALIŞMA ALANI</span>
           </div>
 
@@ -551,6 +621,7 @@ export default function App() {
                 <Grip size={17} style={{ verticalAlign: 'middle' }} />
                 {' '}Deney masası
               </h3>
+
               <small style={{ color: '#91aaa9' }}>
                 Maddeleri tutup kapların içine bırakabilirsin.
               </small>
@@ -562,6 +633,7 @@ export default function App() {
             </button>
           </div>
 
+          {/* SÜRÜKLE BIRAK MASASI */}
           <div
             ref={boardRef}
             style={{
@@ -613,7 +685,9 @@ export default function App() {
                 pointerEvents: 'none'
               }}>
                 <Beaker size={48} strokeWidth={1} />
-                <h3 style={{ marginBottom: 5 }}>Deney masan hazır</h3>
+                <h3 style={{ marginBottom: 5 }}>
+                  Deney masan hazır
+                </h3>
                 <p style={{ fontSize: 13, maxWidth: 260 }}>
                   Madde ve ekipman ekleyerek deneyini oluşturmaya başla.
                 </p>
@@ -623,11 +697,13 @@ export default function App() {
             {objects.map(item => {
               const position = getObjectPosition(item);
               const contained = Boolean(item.containerId);
+
               const contents = item.kind === 'equipment'
                 ? getContainedItems(item.id)
                 : [];
 
               const containerHeight = 105 + contents.length * 25;
+
               const isSelectedContainer =
                 item.id === activeContainerId && item.canContain;
 
@@ -644,7 +720,10 @@ export default function App() {
                   onPointerUp={event => finishDrag(item.id, event)}
                   onPointerCancel={() => setDraggingId(null)}
                   onClick={() => {
-                    if (item.kind === 'equipment' && item.canContain) {
+                    if (
+                      item.kind === 'equipment' &&
+                      item.canContain
+                    ) {
                       setSelectedContainerId(item.id);
                       setReactionResult(null);
                       resetSimulation();
@@ -654,9 +733,21 @@ export default function App() {
                     position: 'absolute',
                     left: position.x,
                     top: position.y,
-                    width: contained ? 112 : item.kind === 'equipment' ? 145 : 105,
-                    minHeight: contained ? 22 : item.kind === 'equipment' ? containerHeight : 76,
+
+                    width: contained
+                      ? 112
+                      : item.kind === 'equipment'
+                        ? 145
+                        : 105,
+
+                    minHeight: contained
+                      ? 22
+                      : item.kind === 'equipment'
+                        ? containerHeight
+                        : 76,
+
                     borderRadius: contained ? 7 : 13,
+
                     border: draggingId === item.id
                       ? '2px solid #8ce6d1'
                       : isSelectedContainer
@@ -664,11 +755,13 @@ export default function App() {
                         : contained
                           ? '1px solid #77bdb0'
                           : '1px solid #56858a',
+
                     background: contained
                       ? 'linear-gradient(145deg, #286b69, #16464b)'
                       : item.kind === 'substance'
                         ? 'linear-gradient(145deg, #1c5056, #10343d)'
                         : 'linear-gradient(145deg, #31515b, #1a343e)',
+
                     color: '#effffb',
                     display: 'flex',
                     flexDirection: 'column',
@@ -677,10 +770,20 @@ export default function App() {
                     gap: 4,
                     padding: contained ? 4 : 7,
                     boxSizing: 'border-box',
-                    cursor: draggingId === item.id ? 'grabbing' : 'grab',
+
+                    cursor: draggingId === item.id
+                      ? 'grabbing'
+                      : 'grab',
+
                     userSelect: 'none',
                     touchAction: 'none',
-                    zIndex: draggingId === item.id ? 20 : contained ? 5 : 2,
+
+                    zIndex: draggingId === item.id
+                      ? 20
+                      : contained
+                        ? 5
+                        : 2,
+
                     boxShadow: isSelectedContainer
                       ? '0 0 18px #6bdcc255'
                       : draggingId === item.id
@@ -724,7 +827,9 @@ export default function App() {
                   ) : (
                     <>
                       <span style={{ fontSize: 25 }}>
-                        {item.kind === 'substance' ? '🧴' : item.symbol}
+                        {item.kind === 'substance'
+                          ? '🧴'
+                          : item.symbol}
                       </span>
 
                       <b style={{
@@ -749,25 +854,31 @@ export default function App() {
                             : 'Deney ekipmanı'}
                       </small>
 
-                      {item.kind === 'equipment' && item.canContain && (
-                        <div style={{
-                          width: '90%',
-                          minHeight: 20,
-                          marginTop: 4,
-                          borderTop: '1px dashed #8eb6b0',
-                          paddingTop: 5,
-                          color: '#bde8df',
-                          fontSize: 9,
-                          textAlign: 'center'
-                        }}>
-                          {contents.length > 0
-                            ? contents.map(child => child.substance?.formula).join(' · ')
-                            : 'Madde bırak'}
-                        </div>
-                      )}
+                      {item.kind === 'equipment' &&
+                        item.canContain && (
+                          <div style={{
+                            width: '90%',
+                            minHeight: 20,
+                            marginTop: 4,
+                            borderTop: '1px dashed #8eb6b0',
+                            paddingTop: 5,
+                            color: '#bde8df',
+                            fontSize: 9,
+                            textAlign: 'center'
+                          }}>
+                            {contents.length > 0
+                              ? contents
+                                  .map(child => child.substance?.formula)
+                                  .join(' · ')
+                              : 'Madde bırak'}
+                          </div>
+                        )}
 
                       {isSelectedContainer && (
-                        <small style={{ color: '#a6f5df', fontSize: 9 }}>
+                        <small style={{
+                          color: '#a6f5df',
+                          fontSize: 9
+                        }}>
                           ✓ Seçili kap
                         </small>
                       )}
@@ -789,9 +900,13 @@ export default function App() {
             </div>
           </div>
 
+          {/* EKİPMAN KÜTÜPHANESİ */}
           <div style={{ marginTop: 20 }}>
             <div className="panel-title">
-              <h3><FlaskConical size={18} /> Deney malzemeleri</h3>
+              <h3>
+                <FlaskConical size={18} />
+                Deney malzemeleri
+              </h3>
               <span>EKİPMAN KÜTÜPHANESİ</span>
             </div>
 
@@ -822,7 +937,9 @@ export default function App() {
                     {equipment.symbol}
                   </span>
 
-                  <b style={{ fontSize: 12 }}>{equipment.name}</b>
+                  <b style={{ fontSize: 12 }}>
+                    {equipment.name}
+                  </b>
 
                   <small style={{
                     display: 'block',
@@ -837,6 +954,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* DENEY KABI SEÇİMİ */}
           <div style={{
             marginTop: 22,
             padding: 16,
@@ -845,7 +963,7 @@ export default function App() {
             background: '#0c252d'
           }}>
             <h3 style={{ color: '#d9f3ed', marginTop: 0 }}>
-              <FlaskRound size={18} style={{ verticalAlign: 'middle' }} />
+              <Beaker size={18} style={{ verticalAlign: 'middle' }} />
               {' '}Deney kabı seçimi
             </h3>
 
@@ -871,6 +989,7 @@ export default function App() {
               }}
             >
               <option value="">Önce deney kabı ekle</option>
+
               {containers.map(container => (
                 <option key={container.id} value={container.id}>
                   {container.equipment} · {getContainedItems(container.id).length} madde
@@ -893,7 +1012,11 @@ export default function App() {
                   Bu kapta henüz madde yok. Kütüphaneden madde ekleyip kabın içine sürükle.
                 </p>
               ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 7
+                }}>
                   {containerSubstances.map((item, index) => (
                     <span
                       key={`${item.id}-${index}`}
@@ -915,14 +1038,21 @@ export default function App() {
             <button
               className="analyze"
               onClick={analyzeReaction}
-              disabled={!activeContainerId || containerSubstances.length < 2}
-              style={{ width: '100%', marginTop: 15 }}
+              disabled={
+                !activeContainerId ||
+                containerSubstances.length < 2
+              }
+              style={{
+                width: '100%',
+                marginTop: 15
+              }}
             >
               <Beaker size={17} />
               Seçili kaptaki maddeleri analiz et
             </button>
           </div>
 
+          {/* MASADAKİ MADDELER */}
           <div style={{ marginTop: 20 }}>
             <div className="selected-title">
               MASADAKİ TÜM MADDELER ({selectedSubstances.length})
@@ -933,34 +1063,42 @@ export default function App() {
                 Henüz deney masasına madde eklemedin.
               </p>
             ) : (
-              selectedSubstances.map((item, index) => (
-                <div className="selected-item" key={`${item.id}-${index}`}>
-                  <span>
-                    <b>{item.formula}</b> — {item.name}
-                    {item.molarMass !== undefined && (
-                      <small> · {item.molarMass} g/mol</small>
-                    )}
-                  </span>
+              selectedSubstances.map((item, index) => {
+                const matchingObjects = objects.filter(
+                  entry =>
+                    entry.kind === 'substance' &&
+                    entry.substance?.id === item.id
+                );
 
-                  <button
-                    onClick={() => {
-                      const object = objects.filter(
-                        entry =>
-                          entry.kind === 'substance' &&
-                          entry.substance?.id === item.id
-                      )[index];
-
-                      if (object) removeObject(object.id);
-                    }}
-                    aria-label="Maddeyi kaldır"
+                return (
+                  <div
+                    className="selected-item"
+                    key={`${item.id}-${index}`}
                   >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))
+                    <span>
+                      <b>{item.formula}</b> — {item.name}
+
+                      {item.molarMass !== undefined && (
+                        <small> · {item.molarMass} g/mol</small>
+                      )}
+                    </span>
+
+                    <button
+                      onClick={() => {
+                        const object = matchingObjects[0];
+                        if (object) removeObject(object.id);
+                      }}
+                      aria-label="Maddeyi kaldır"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
 
+          {/* TEPKİME RAPORU */}
           {reactionResult && (
             <section
               className="reaction-result"
@@ -982,309 +1120,404 @@ export default function App() {
                 {reactionResult.message}
               </p>
 
-              {reactionResult.found && reactionResult.reaction && (
-                <>
-                  <div style={{
-                    padding: 14,
-                    borderRadius: 10,
-                    background: '#123b40',
-                    margin: '14px 0'
-                  }}>
-                    <h3 style={{ margin: '0 0 8px', color: '#9ce9d7' }}>
-                      {reactionResult.reaction.name}
-                    </h3>
-                    <p style={{ margin: 0, fontSize: 14 }}>
-                      {reactionResult.reaction.balancedEquation}
-                    </p>
-                  </div>
-
-                  <h4>Deney simülasyonu</h4>
-
-                  <div
-                    className={isRunning ? 'lab-active' : ''}
-                    style={{
-                      position: 'relative',
-                      minHeight: 155,
-                      overflow: 'hidden',
-                      borderRadius: 13,
-                      border: '1px solid #477078',
-                      background: 'linear-gradient(160deg, #163c43, #071b23)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 15
-                    }}
-                  >
-                    {effects?.gas?.occurs && stageIndex > 0 && (
-                      <div style={{
-                        position: 'absolute',
-                        inset: 'auto 15% 25px',
-                        height: 80,
-                        pointerEvents: 'none'
+              {reactionResult.found &&
+                reactionResult.reaction && (
+                  <>
+                    <div style={{
+                      padding: 14,
+                      borderRadius: 10,
+                      background: '#123b40',
+                      margin: '14px 0'
+                    }}>
+                      <h3 style={{
+                        margin: '0 0 8px',
+                        color: '#9ce9d7'
                       }}>
-                        <span className="lab-bubble" style={{ left: '15%' }} />
-                        <span className="lab-bubble" />
-                        <span className="lab-bubble" />
-                        <span className="lab-bubble" />
-                      </div>
-                    )}
+                        {reactionResult.reaction.name}
+                      </h3>
 
-                    {effects?.temperature?.occurs && stageIndex > 0 && (
-                      <Flame
-                        className="lab-heat"
-                        size={30}
-                        color="#ffb56b"
-                      />
-                    )}
+                      <p style={{ margin: 0, fontSize: 14 }}>
+                        {reactionResult.reaction.balancedEquation}
+                      </p>
+                    </div>
 
-                    {effects?.precipitate?.occurs && stageIndex > 0 && (
-                      <div
-                        className="lab-precipitate"
-                        style={{
+                    {/* SİMÜLASYON */}
+                    <h4>Deney simülasyonu</h4>
+
+                    <div
+                      className={isRunning ? 'lab-active' : ''}
+                      style={{
+                        position: 'relative',
+                        minHeight: 155,
+                        overflow: 'hidden',
+                        borderRadius: 13,
+                        border: '1px solid #477078',
+                        background: 'linear-gradient(160deg, #163c43, #071b23)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 15
+                      }}
+                    >
+                      {effects?.gas?.occurs && stageIndex > 0 && (
+                        <div style={{
                           position: 'absolute',
-                          bottom: 15,
-                          width: 95,
-                          height: 13,
-                          borderRadius: '50%',
-                          background: 'linear-gradient(#eee9d4, #b7b6a8)',
-                          boxShadow: '0 0 15px #e4e1cc66'
-                        }}
-                      />
-                    )}
+                          inset: 'auto 15% 25px',
+                          height: 80,
+                          pointerEvents: 'none'
+                        }}>
+                          <span
+                            className="lab-bubble"
+                            style={{ left: '15%' }}
+                          />
+                          <span className="lab-bubble" />
+                          <span className="lab-bubble" />
+                          <span className="lab-bubble" />
+                        </div>
+                      )}
 
-                    {effects?.colorChange?.occurs && stageIndex > 0 && (
-                      <div style={{
-                        width: 55,
-                        height: 55,
-                        borderRadius: '50%',
-                        background: effects.colorChange.color ?? '#5a9d9a',
-                        marginBottom: 8
-                      }} />
-                    )}
+                      {effects?.temperature?.occurs &&
+                        stageIndex > 0 && (
+                          <div
+                            className="lab-heat"
+                            style={{
+                              fontSize: 30,
+                              marginBottom: 5
+                            }}
+                          >
+                            🌡️
+                          </div>
+                        )}
 
-                    {!effects?.gas?.occurs &&
-                      !effects?.precipitate?.occurs &&
-                      !effects?.temperature?.occurs &&
-                      !effects?.colorChange?.occurs && (
-                        <Waves size={34} color="#83c9bc" />
-                    )}
+                      {effects?.precipitate?.occurs &&
+                        stageIndex > 0 && (
+                          <div
+                            className="lab-precipitate"
+                            style={{
+                              position: 'absolute',
+                              bottom: 15,
+                              width: 95,
+                              height: 13,
+                              borderRadius: '50%',
+                              background: 'linear-gradient(#eee9d4, #b7b6a8)',
+                              boxShadow: '0 0 15px #e4e1cc66'
+                            }}
+                          />
+                        )}
 
-                    <b style={{
-                      position: 'relative',
-                      zIndex: 2,
-                      marginTop: 8,
-                      textAlign: 'center'
-                    }}>
-                      {stageIndex === 0
-                        ? 'Deney henüz başlatılmadı'
-                        : simulationFinished
-                          ? 'Simülasyon tamamlandı'
-                          : 'Tepkime gözlemleniyor'}
-                    </b>
+                      {effects?.colorChange?.occurs &&
+                        stageIndex > 0 && (
+                          <div style={{
+                            width: 55,
+                            height: 55,
+                            borderRadius: '50%',
+                            background:
+                              effects.colorChange.color ?? '#5a9d9a',
+                            marginBottom: 8
+                          }} />
+                        )}
 
-                    <small style={{
-                      position: 'relative',
-                      zIndex: 2,
-                      color: '#a8c9c2',
-                      textAlign: 'center',
-                      marginTop: 6
-                    }}>
-                      {stageIndex === 0
-                        ? 'Başlat düğmesine basarak aşamaları izle.'
-                        : effects?.gas?.occurs
-                          ? 'Gaz oluşumu veritabanındaki gözleme göre gösteriliyor.'
-                          : effects?.precipitate?.occurs
-                            ? 'Çökelme gözlemi gösteriliyor.'
-                            : effects?.temperature?.occurs
-                              ? 'Sıcaklık etkisi tanımlanmış.'
-                              : 'Veritabanında ek bir görsel etki tanımlanmamış.'}
-                    </small>
-                  </div>
+                      {!effects?.gas?.occurs &&
+                        !effects?.precipitate?.occurs &&
+                        !effects?.temperature?.occurs &&
+                        !effects?.colorChange?.occurs && (
+                          <Waves size={34} color="#83c9bc" />
+                        )}
 
-                  <div style={{
-                    display: 'flex',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                    marginTop: 13
-                  }}>
-                    <button
-                      onClick={() => {
-                        if (simulationFinished) {
-                          setStageIndex(0);
-                          setSimulationFinished(false);
-                        }
-                        setIsRunning(true);
-                      }}
-                      disabled={isRunning || simulationFinished}
-                      style={{
-                        flex: 1,
-                        minWidth: 100,
-                        padding: 11,
-                        border: 0,
-                        borderRadius: 9,
-                        background: '#287d68',
-                        color: 'white',
-                        cursor: 'pointer',
-                        opacity: isRunning || simulationFinished ? .5 : 1
-                      }}
-                    >
-                      <Play size={15} style={{ verticalAlign: 'middle' }} />
-                      {' '}Başlat
-                    </button>
+                      <b style={{
+                        position: 'relative',
+                        zIndex: 2,
+                        marginTop: 8,
+                        textAlign: 'center'
+                      }}>
+                        {stageIndex === 0
+                          ? 'Deney henüz başlatılmadı'
+                          : simulationFinished
+                            ? 'Simülasyon tamamlandı'
+                            : 'Tepkime gözlemleniyor'}
+                      </b>
 
-                    <button
-                      onClick={() => setIsRunning(false)}
-                      disabled={!isRunning}
-                      style={{
-                        flex: 1,
-                        minWidth: 100,
-                        padding: 11,
-                        border: '1px solid #477078',
-                        borderRadius: 9,
-                        background: '#153740',
-                        color: '#e4f5f0',
-                        cursor: 'pointer',
-                        opacity: !isRunning ? .5 : 1
-                      }}
-                    >
-                      <Pause size={15} style={{ verticalAlign: 'middle' }} />
-                      {' '}Duraklat
-                    </button>
+                      <small style={{
+                        position: 'relative',
+                        zIndex: 2,
+                        color: '#a8c9c2',
+                        textAlign: 'center',
+                        marginTop: 6
+                      }}>
+                        {stageIndex === 0
+                          ? 'Başlat düğmesine basarak aşamaları izle.'
+                          : effects?.gas?.occurs
+                            ? 'Gaz oluşumu veritabanındaki gözleme göre gösteriliyor.'
+                            : effects?.precipitate?.occurs
+                              ? 'Çökelme gözlemi gösteriliyor.'
+                              : effects?.temperature?.occurs
+                                ? 'Sıcaklık etkisi tanımlanmış.'
+                                : 'Veritabanında ek bir görsel etki tanımlanmamış.'}
+                      </small>
+                    </div>
 
-                    <button
-                      onClick={resetSimulation}
-                      style={{
-                        flex: 1,
-                        minWidth: 100,
-                        padding: 11,
-                        border: '1px solid #477078',
-                        borderRadius: 9,
-                        background: '#153740',
-                        color: '#e4f5f0',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <RotateCw size={15} style={{ verticalAlign: 'middle' }} />
-                      {' '}Yeniden oynat
-                    </button>
-                  </div>
-
-                  <div style={{ marginTop: 18 }}>
+                    {/* KONTROLLER */}
                     <div style={{
                       display: 'flex',
-                      justifyContent: 'space-between',
-                      color: '#a8c9c2',
-                      fontSize: 12,
-                      marginBottom: 7
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      marginTop: 13
                     }}>
-                      <b>Deney aşamaları</b>
-                      <span>
-                        {experimentSteps.length > 0
-                          ? `${stageIndex}/${experimentSteps.length}`
-                          : 'Aşama yok'}
-                      </span>
+                      <button
+                        onClick={startSimulation}
+                        disabled={
+                          isRunning ||
+                          experimentSteps.length === 0
+                        }
+                        style={{
+                          flex: 1,
+                          minWidth: 100,
+                          padding: 11,
+                          border: 0,
+                          borderRadius: 9,
+                          background: '#287d68',
+                          color: 'white',
+                          cursor: 'pointer',
+                          opacity:
+                            isRunning || experimentSteps.length === 0
+                              ? .5
+                              : 1
+                        }}
+                      >
+                        <Play
+                          size={15}
+                          style={{ verticalAlign: 'middle' }}
+                        />
+                        {' '}Başlat
+                      </button>
+
+                      <button
+                        onClick={() => setIsRunning(false)}
+                        disabled={!isRunning}
+                        style={{
+                          flex: 1,
+                          minWidth: 100,
+                          padding: 11,
+                          border: '1px solid #477078',
+                          borderRadius: 9,
+                          background: '#153740',
+                          color: '#e4f5f0',
+                          cursor: 'pointer',
+                          opacity: !isRunning ? .5 : 1
+                        }}
+                      >
+                        <Pause
+                          size={15}
+                          style={{ verticalAlign: 'middle' }}
+                        />
+                        {' '}Duraklat
+                      </button>
+
+                      <button
+                        onClick={resetSimulation}
+                        style={{
+                          flex: 1,
+                          minWidth: 100,
+                          padding: 11,
+                          border: '1px solid #477078',
+                          borderRadius: 9,
+                          background: '#153740',
+                          color: '#e4f5f0',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <RotateCw
+                          size={15}
+                          style={{ verticalAlign: 'middle' }}
+                        />
+                        {' '}Yeniden oynat
+                      </button>
                     </div>
 
-                    <div style={{
-                      height: 6,
-                      borderRadius: 8,
-                      background: '#24434a',
-                      overflow: 'hidden'
-                    }}>
+                    {/* AŞAMALAR */}
+                    <div style={{ marginTop: 18 }}>
                       <div style={{
-                        width: experimentSteps.length
-                          ? `${(stageIndex / experimentSteps.length) * 100}%`
-                          : '0%',
-                        height: '100%',
-                        background: '#72d9bd',
-                        transition: 'width .3s ease'
-                      }} />
-                    </div>
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        color: '#a8c9c2',
+                        fontSize: 12,
+                        marginBottom: 7
+                      }}>
+                        <b>Deney aşamaları</b>
 
-                    <ol style={{
-                      paddingLeft: 22,
-                      color: '#c5ded8',
-                      lineHeight: 1.8,
-                      fontSize: 13
-                    }}>
-                      {experimentSteps.map((step: string, index: number) => (
-                        <li
-                          key={index}
-                          style={{
-                            color: index < stageIndex
-                              ? '#8ce6c9'
-                              : index === stageIndex
-                                ? '#ffffff'
-                                : '#789994',
-                            fontWeight: index === stageIndex ? 700 : 400
-                          }}
-                        >
-                          {step}
-                          {index < stageIndex && (
-                            <CheckCircle2
-                              size={13}
-                              style={{ marginLeft: 6, verticalAlign: 'middle' }}
-                            />
-                          )}
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
+                        <span>
+                          {experimentSteps.length > 0
+                            ? `${stageIndex}/${experimentSteps.length}`
+                            : 'Aşama yok'}
+                        </span>
+                      </div>
 
-                  <h4>Gözlem ve etki tablosu</h4>
+                      <div style={{
+                        height: 6,
+                        borderRadius: 8,
+                        background: '#24434a',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: experimentSteps.length
+                            ? `${(stageIndex / experimentSteps.length) * 100}%`
+                            : '0%',
+                          height: '100%',
+                          background: '#72d9bd',
+                          transition: 'width .3s ease'
+                        }} />
+                      </div>
 
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{
-                      width: '100%',
-                      borderCollapse: 'collapse',
-                      fontSize: 12
-                    }}>
-                      <thead>
-                        <tr style={{ color: '#9ce9d7', textAlign: 'left' }}>
-                          <th style={{ padding: 9, borderBottom: '1px solid #477078' }}>Özellik</th>
-                          <th style={{ padding: 9, borderBottom: '1px solid #477078' }}>Sonuç</th>
-                          <th style={{ padding: 9, borderBottom: '1px solid #477078' }}>Açıklama</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(reactionResult.resultTable ?? []).map(
-                          (row: any, index: number) => (
-                            <tr key={index}>
-                              <td style={{ padding: 9, borderBottom: '1px solid #25454b' }}>
-                                {row.property}
-                              </td>
-                              <td style={{ padding: 9, borderBottom: '1px solid #25454b' }}>
-                                {row.result}
-                              </td>
-                              <td style={{ padding: 9, borderBottom: '1px solid #25454b', color: '#a8c9c2' }}>
-                                {row.observation}
-                              </td>
-                            </tr>
+                      <ol style={{
+                        paddingLeft: 22,
+                        color: '#c5ded8',
+                        lineHeight: 1.8,
+                        fontSize: 13
+                      }}>
+                        {experimentSteps.map(
+                          (step: string, index: number) => (
+                            <li
+                              key={index}
+                              style={{
+                                color: index < stageIndex
+                                  ? '#8ce6c9'
+                                  : index === stageIndex
+                                    ? '#ffffff'
+                                    : '#789994',
+                                fontWeight:
+                                  index === stageIndex ? 700 : 400
+                              }}
+                            >
+                              {step}
+
+                              {index < stageIndex && (
+                                <CheckCircle2
+                                  size={13}
+                                  style={{
+                                    marginLeft: 6,
+                                    verticalAlign: 'middle'
+                                  }}
+                                />
+                              )}
+                            </li>
                           )
                         )}
-                      </tbody>
-                    </table>
-                  </div>
+                      </ol>
+                    </div>
 
-                  <h4>Kimyasal denklemler</h4>
-                  <p><b>Denklem:</b> {reactionResult.reaction.balancedEquation}</p>
-                  <p><b>Tam iyonik:</b> {reactionResult.reaction.completeIonicEquation}</p>
-                  <p><b>Net iyonik:</b> {reactionResult.reaction.netIonicEquation}</p>
-                  <p><b>Seyirci iyonlar:</b> {reactionResult.reaction.spectatorIons.join(', ') || 'Yok'}</p>
+                    {/* GÖZLEM TABLOSU */}
+                    <h4>Gözlem ve etki tablosu</h4>
 
-                  <h4>Bilimsel açıklama</h4>
-                  <p style={{ color: '#b7d4ce', lineHeight: 1.7 }}>
-                    {reactionResult.scientificExplanation}
-                  </p>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        fontSize: 12
+                      }}>
+                        <thead>
+                          <tr style={{
+                            color: '#9ce9d7',
+                            textAlign: 'left'
+                          }}>
+                            <th style={{
+                              padding: 9,
+                              borderBottom: '1px solid #477078'
+                            }}>
+                              Özellik
+                            </th>
 
-                  <p style={{ color: '#91aaa9', fontSize: 11, lineHeight: 1.6 }}>
-                    Not: Bu ekran, doğrulanmış tepkime kayıtlarını görselleştirir.
-                    Gerçek zamanlı sıvı dinamiği, derişim hesabı veya ölçülmüş
-                    sıcaklık değeri üretmez.
-                  </p>
-                </>
-              )}
+                            <th style={{
+                              padding: 9,
+                              borderBottom: '1px solid #477078'
+                            }}>
+                              Sonuç
+                            </th>
+
+                            <th style={{
+                              padding: 9,
+                              borderBottom: '1px solid #477078'
+                            }}>
+                              Açıklama
+                            </th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {(reactionResult.resultTable ?? []).map(
+                            (row: any, index: number) => (
+                              <tr key={index}>
+                                <td style={{
+                                  padding: 9,
+                                  borderBottom: '1px solid #25454b'
+                                }}>
+                                  {row.property}
+                                </td>
+
+                                <td style={{
+                                  padding: 9,
+                                  borderBottom: '1px solid #25454b'
+                                }}>
+                                  {row.result}
+                                </td>
+
+                                <td style={{
+                                  padding: 9,
+                                  borderBottom: '1px solid #25454b',
+                                  color: '#a8c9c2'
+                                }}>
+                                  {row.observation}
+                                </td>
+                              </tr>
+                            )
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* DENKLEMLER */}
+                    <h4>Kimyasal denklemler</h4>
+
+                    <p>
+                      <b>Denklem:</b>{' '}
+                      {reactionResult.reaction.balancedEquation}
+                    </p>
+
+                    <p>
+                      <b>Tam iyonik:</b>{' '}
+                      {reactionResult.reaction.completeIonicEquation}
+                    </p>
+
+                    <p>
+                      <b>Net iyonik:</b>{' '}
+                      {reactionResult.reaction.netIonicEquation}
+                    </p>
+
+                    <p>
+                      <b>Seyirci iyonlar:</b>{' '}
+                      {reactionResult.reaction.spectatorIons.join(', ') || 'Yok'}
+                    </p>
+
+                    <h4>Bilimsel açıklama</h4>
+
+                    <p style={{
+                      color: '#b7d4ce',
+                      lineHeight: 1.7
+                    }}>
+                      {reactionResult.scientificExplanation}
+                    </p>
+
+                    <p style={{
+                      color: '#91aaa9',
+                      fontSize: 11,
+                      lineHeight: 1.6
+                    }}>
+                      Not: Bu ekran, doğrulanmış tepkime kayıtlarını
+                      görselleştirir. Gerçek zamanlı sıvı dinamiği,
+                      derişim hesabı veya ölçülmüş sıcaklık değeri üretmez.
+                    </p>
+                  </>
+                )}
             </section>
           )}
         </section>
@@ -1296,4 +1529,3 @@ export default function App() {
     </main>
   );
 }
-
