@@ -288,5 +288,23 @@ export const compounds: CompoundData[] = [
     state: "solid",
     category: "Tuz",
     solubleInWater: false
+  },
+  {
+    id: "barium-chloride",
+    name: "Baryum klorür",
+    formula: "BaCl2",
+    molarMass: 208.23,
+    state: "solid",
+    category: "Tuz",
+    solubleInWater: true
+  },
+  {
+    id: "sodium-sulfate",
+    name: "Sodyum sülfat",
+    formula: "Na2SO4",
+    molarMass: 142.04,
+    state: "solid",
+    category: "Tuz",
+    solubleInWater: true
   }
 ];
