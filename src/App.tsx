@@ -1,28 +1,61 @@
 
-import { useState } from 'react';
-import { Beaker, Atom, FlaskConical, Search, Plus, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  Atom, FlaskConical, Search, Plus, Trash2,
+  Beaker, X
+} from 'lucide-react';
 import LabScene from './LabScene';
+import { elements } from './data/elements';
+import { compounds } from './data/compounds';
 
-const substances = [
-  { name: 'Su', formula: 'H₂O', type: 'Bileşik' },
-  { name: 'Sodyum klorür', formula: 'NaCl', type: 'Bileşik' },
-  { name: 'Hidroklorik asit', formula: 'HCl', type: 'Asit' },
-  { name: 'Sodyum hidroksit', formula: 'NaOH', type: 'Baz' },
-  { name: 'Gümüş nitrat', formula: 'AgNO₃', type: 'Tuz' },
-  { name: 'Bakır sülfat', formula: 'CuSO₄', type: 'Tuz' },
-  { name: 'Kalsiyum karbonat', formula: 'CaCO₃', type: 'Bileşik' },
-  { name: 'Oksijen', formula: 'O₂', type: 'Element' },
-  { name: 'Hidrojen', formula: 'H₂', type: 'Element' },
-  { name: 'Karbon dioksit', formula: 'CO₂', type: 'Bileşik' },
-];
+type Substance = {
+  id: string;
+  name: string;
+  formula: string;
+  type: string;
+  molarMass?: number;
+  state?: string;
+};
 
 export default function App() {
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<typeof substances>([]);
+  const [category, setCategory] = useState('Tümü');
+  const [selected, setSelected] = useState<Substance[]>([]);
 
-  const filtered = substances.filter(s =>
-    `${s.name} ${s.formula} ${s.type}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const substances: Substance[] = useMemo(() => [
+    ...elements.map(element => ({
+      id: `element-${element.atomicNumber}`,
+      name: element.name,
+      formula: element.symbol,
+      type: 'Element'
+    })),
+    ...compounds.map(compound => ({
+      id: compound.id,
+      name: compound.name,
+      formula: compound.formula,
+      type: compound.category,
+      molarMass: compound.molarMass,
+      state: compound.state
+    }))
+  ], []);
+
+  const filtered = substances.filter(item => {
+    const matchesSearch =
+      `${item.name} ${item.formula} ${item.type}`
+        .toLocaleLowerCase('tr')
+        .includes(search.toLocaleLowerCase('tr'));
+
+    const matchesCategory =
+      category === 'Tümü' ||
+      (category === 'Elementler' && item.type === 'Element') ||
+      (category === 'Bileşikler' && item.type !== 'Element');
+
+    return matchesSearch && matchesCategory;
+  });
+
+  function addSubstance(item: Substance) {
+    setSelected(old => [...old, item]);
+  }
 
   return (
     <main className="app">
@@ -49,18 +82,52 @@ export default function App() {
             <h3><Atom size={19} /> Madde kütüphanesi</h3>
             <span>{filtered.length} madde</span>
           </div>
+
           <div className="search">
             <Search size={17} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Madde veya formül ara..." />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Madde veya formül ara..."
+            />
+            {search && (
+              <button onClick={() => setSearch('')} aria-label="Aramayı temizle">
+                <X size={16} />
+              </button>
+            )}
           </div>
+
+          <div className="filters">
+            {['Tümü', 'Elementler', 'Bileşikler'].map(item => (
+              <button
+                key={item}
+                className={category === item ? 'active' : ''}
+                onClick={() => setCategory(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
           <div className="substances">
-            {filtered.map((s, i) => (
-              <button className="substance" key={i} onClick={() => setSelected(old => [...old, s])}>
-                <span className="formula">{s.formula}</span>
-                <span className="substance-info"><b>{s.name}</b><small>{s.type}</small></span>
+            {filtered.map(item => (
+              <button
+                className="substance"
+                key={item.id}
+                onClick={() => addSubstance(item)}
+              >
+                <span className="formula">{item.formula}</span>
+                <span className="substance-info">
+                  <b>{item.name}</b>
+                  <small>{item.type}</small>
+                </span>
                 <Plus size={17} />
               </button>
             ))}
+
+            {filtered.length === 0 && (
+              <p className="empty">Aradığın madde bulunamadı.</p>
+            )}
           </div>
         </section>
 
@@ -72,20 +139,45 @@ export default function App() {
 
           <LabScene />
 
-          <div className="selected-title">SEÇİLEN MADDELER</div>
+          <div className="selected-title">
+            SEÇİLEN MADDELER ({selected.length})
+          </div>
+
           {selected.length === 0 ? (
             <p className="empty">Kütüphaneden madde ekleyebilirsin.</p>
-          ) : selected.map((s, i) => (
-            <div className="selected-item" key={i}>
-              <span><b>{s.formula}</b> — {s.name}</span>
-              <button onClick={() => setSelected(old => old.filter((_, index) => index !== i))}><Trash2 size={16} /></button>
-            </div>
-          ))}
-          <button className="clear" onClick={() => setSelected([])}>Deney alanını temizle</button>
+          ) : (
+            selected.map((item, index) => (
+              <div className="selected-item" key={`${item.id}-${index}`}>
+                <span>
+                  <b>{item.formula}</b> — {item.name}
+                  {item.molarMass !== undefined && (
+                    <small> · {item.molarMass} g/mol</small>
+                  )}
+                </span>
+                <button
+                  onClick={() =>
+                    setSelected(old =>
+                      old.filter((_, i) => i !== index)
+                    )
+                  }
+                  aria-label="Maddeyi kaldır"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))
+          )}
+
+          <button className="clear" onClick={() => setSelected([])}>
+            <Trash2 size={15} /> Deney alanını temizle
+          </button>
         </section>
       </div>
 
-      <footer>SANAL KİMYA LABORATUVARI · EĞİTİM VE BİLİM</footer>
+      <footer>
+        SANAL KİMYA LABORATUVARI · EĞİTİM VE BİLİM
+      </footer>
     </main>
   );
 }
+
