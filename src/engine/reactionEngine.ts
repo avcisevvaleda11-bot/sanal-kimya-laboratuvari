@@ -13,25 +13,25 @@ function normalizeFormula(formula: string): string {
     .replace(/^\d+/, '');
 }
 
+function sortFormulas(formulas: string[]): string[] {
+  return formulas.map(normalizeFormula).sort();
+}
+
 export function findReaction(
   selectedFormulas: string[]
 ): ReactionResult {
-  const selected = selectedFormulas
-    .map(normalizeFormula)
-    .sort();
-
-  if (selected.length < 2) {
+  if (selectedFormulas.length < 2) {
     return {
       found: false,
       reaction: null,
-      message: 'Bir tepkimeyi incelemek için en az iki madde seçmelisin.'
+      message: 'Tepkime analizi için en az iki madde seçmelisin.'
     };
   }
 
-  const match = reactions.find(reaction => {
-    const reactants = reaction.reactants
-      .map(normalizeFormula)
-      .sort();
+  const selected = sortFormulas(selectedFormulas);
+
+  const match = reactions.find((reaction: ReactionData) => {
+    const reactants = sortFormulas(reaction.reactants);
 
     return (
       selected.length === reactants.length &&
@@ -44,7 +44,7 @@ export function findReaction(
       found: false,
       reaction: null,
       message:
-        'Bu madde kombinasyonu doğrulanmış tepkime kayıtlarımızda bulunmuyor. Bilimsel doğrulama olmadan sonuç gösterilmedi.'
+        'Bu kombinasyon doğrulanmış tepkime veritabanında bulunmuyor. Bilimsel doğrulama olmadan sonuç üretilmedi.'
     };
   }
 
