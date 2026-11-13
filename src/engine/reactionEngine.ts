@@ -1,5 +1,5 @@
 
-import { reactions, type ReactionData } from "../data/reactions";
+import { reactions, type ReactionData } from '../data/reactions';
 
 export interface ReactionResult {
   found: boolean;
@@ -7,24 +7,30 @@ export interface ReactionResult {
   message: string;
 }
 
+function normalizeFormula(formula: string): string {
+  return formula
+    .replace(/\s/g, '')
+    .replace(/^\d+/, '');
+}
+
 export function findReaction(
   selectedFormulas: string[]
 ): ReactionResult {
   const selected = selectedFormulas
-    .map(formula => formula.replace(/\s/g, ""))
+    .map(normalizeFormula)
     .sort();
 
   if (selected.length < 2) {
     return {
       found: false,
       reaction: null,
-      message: "Bir tepkimeyi incelemek için en az iki madde seçmelisin."
+      message: 'Bir tepkimeyi incelemek için en az iki madde seçmelisin.'
     };
   }
 
   const match = reactions.find(reaction => {
     const reactants = reaction.reactants
-      .map(formula => formula.replace(/\s/g, "").replace(/^\d+/, ""))
+      .map(normalizeFormula)
       .sort();
 
     return (
@@ -37,13 +43,14 @@ export function findReaction(
     return {
       found: false,
       reaction: null,
-      message: "Bu madde kombinasyonu henüz doğrulanmış tepkime veritabanında bulunmuyor. Bilimsel doğrulama olmadan sonuç gösterilmedi."
+      message:
+        'Bu madde kombinasyonu doğrulanmış tepkime kayıtlarımızda bulunmuyor. Bilimsel doğrulama olmadan sonuç gösterilmedi.'
     };
   }
 
   return {
     found: true,
     reaction: match,
-    message: "Doğrulanmış tepkime kaydı bulundu."
+    message: 'Tepkime veritabanında eşleşme bulundu.'
   };
 }
