@@ -1,12 +1,12 @@
 
 import { useMemo, useState } from 'react';
 import {
-  Atom, FlaskConical, Search, Plus, Trash2,
-  Beaker, X
+  Atom, FlaskConical, Search, Plus, Trash2, X, Beaker
 } from 'lucide-react';
 import LabScene from './LabScene';
 import { elements } from './data/elements';
 import { compounds } from './data/compounds';
+import { findReaction } from './engine/reactionEngine';
 
 type Substance = {
   id: string;
@@ -21,6 +21,7 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Tümü');
   const [selected, setSelected] = useState<Substance[]>([]);
+  const [reactionResult, setReactionResult] = useState<any>(null);
 
   const substances: Substance[] = useMemo(() => [
     ...elements.map(element => ({
@@ -55,6 +56,12 @@ export default function App() {
 
   function addSubstance(item: Substance) {
     setSelected(old => [...old, item]);
+    setReactionResult(null);
+  }
+
+  function analyzeReaction() {
+    const result = findReaction(selected.map(item => item.formula));
+    setReactionResult(result);
   }
 
   return (
@@ -155,11 +162,10 @@ export default function App() {
                   )}
                 </span>
                 <button
-                  onClick={() =>
-                    setSelected(old =>
-                      old.filter((_, i) => i !== index)
-                    )
-                  }
+                  onClick={() => {
+                    setSelected(old => old.filter((_, i) => i !== index));
+                    setReactionResult(null);
+                  }}
                   aria-label="Maddeyi kaldır"
                 >
                   <Trash2 size={16} />
@@ -168,9 +174,45 @@ export default function App() {
             ))
           )}
 
-          <button className="clear" onClick={() => setSelected([])}>
+          <button
+            className="clear"
+            onClick={() => {
+              setSelected([]);
+              setReactionResult(null);
+            }}
+          >
             <Trash2 size={15} /> Deney alanını temizle
           </button>
+
+          <button
+            className="analyze"
+            onClick={analyzeReaction}
+            disabled={selected.length < 2}
+          >
+            <Beaker size={17} /> Tepkimeleri incele
+          </button>
+
+          {reactionResult && (
+            <div className="reaction-result">
+              <h3>Tepkime analizi</h3>
+              <p>{reactionResult.message}</p>
+
+              {reactionResult.found && reactionResult.reaction && (
+                <>
+                  <h4>{reactionResult.reaction.name}</h4>
+                  <p><b>Denklem:</b> {reactionResult.reaction.balancedEquation}</p>
+                  <p><b>Tam iyonik:</b> {reactionResult.reaction.completeIonicEquation}</p>
+                  <p><b>Net iyonik:</b> {reactionResult.reaction.netIonicEquation}</p>
+                  <p><b>Seyirci iyonlar:</b> {reactionResult.reaction.spectatorIons.join(', ')}</p>
+                  <p><b>Gözlem:</b> {reactionResult.reaction.observation}</p>
+                  {reactionResult.reaction.precipitate && (
+                    <p><b>Çökelek:</b> {reactionResult.reaction.precipitate}</p>
+                  )}
+                  <p><b>Gaz oluşumu:</b> {reactionResult.reaction.gasFormation ? 'Var' : 'Yok'}</p>
+                </>
+              )}
+            </div>
+          )}
         </section>
       </div>
 
