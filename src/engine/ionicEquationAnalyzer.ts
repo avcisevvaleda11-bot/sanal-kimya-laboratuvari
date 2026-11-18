@@ -15,57 +15,12 @@ interface Species {
   charge: number;
 }
 
-function parseSpecies(token: string): Species | null {
-  const match = token.trim().match(
-    /^(\d+)?\s*([A-Za-z0-9()]+)(?:\^(\d+)?([+\-−])|(\d+)?([+\-−]))?\((aq|s|l|g)\)$/
-  );
-
-  if (!match) return null;
-
-  const coefficient = Number(match[1] || 1);
-  const formula = match[2];
-  const chargeMagnitude = Number(match[3] || match[5] || 1);
-  const chargeSign = match[4] || match[6] || '';
-
-  if (!Number.isInteger(coefficient) || coefficient < 1) {
-    return null;
-  }
-
-  const charge =
-    chargeSign === '+' ? chargeMagnitude :
-    chargeSign === '-' || chargeSign === '−'
-      ? -chargeMagnitude
-      : 0;
-
-  return { formula, coefficient, charge };
-}
-
-function splitSide(side: string): Species[] | null {
-  const tokens = side.trim().split(/\s+\+\s+/);
-
-  if (!tokens.length || tokens.some(token => !token.trim())) {
-    return null;
-  }
-
-  const result: Species[] = [];
-
-  for (const token of tokens) {
-    const species = parseSpecies(token);
-    if (!species) return null;
-    result.push(species);
-  }
-
-  return result;
-}
-
 function countAtoms(
   formula: string
 ): Record<string, number> | null {
   const tokens = formula.match(/[A-Z][a-z]?|\d+|\(|\)/g);
 
-  if (!tokens || tokens.join('') !== formula) {
-    return null;
-  }
+  if (!tokens || tokens.join('') !== formula) return null;
 
   let index = 0;
 
@@ -88,9 +43,7 @@ function countAtoms(
 
         const multiplier = Number(tokens[index]) || 1;
 
-        if (/^\d+$/.test(tokens[index] || '')) {
-          index++;
-        }
+        if (/^\d+$/.test(tokens[index] || '')) index++;
 
         for (const element in inner) {
           counts[element] =
@@ -106,9 +59,7 @@ function countAtoms(
 
         const multiplier = Number(tokens[index]) || 1;
 
-        if (/^\d+$/.test(tokens[index] || '')) {
-          index++;
-        }
+        if (/^\d+$/.test(tokens[index] || '')) index++;
 
         counts[token] =
           (counts[token] || 0) + multiplier;
@@ -124,8 +75,71 @@ function countAtoms(
 
   const result = parseGroup();
 
-  if (!result || index !== tokens.length) {
+  if (!result || index !== tokens.length) return null;
+
+  return result;
+}
+
+function parseSpecies(token: string): Species | null {
+  const stateMatch = token.trim().match(/\((aq|s|l|g)\)$/);
+
+  if (!stateMatch) return null;
+
+  let body = token.trim().slice(0, stateMatch.index);
+
+  const coefficientMatch = body.match(/^(\d+)\s*/);
+  const coefficient = Number(coefficientMatch?.[1] || 1);
+
+  if (coefficientMatch) {
+    body = body.slice(coefficientMatch[0].length);
+  }
+
+  if (!Number.isInteger(coefficient) || coefficient < 1) {
     return null;
+  }
+
+  let charge = 0;
+
+  // Önce açıkça belirtilmiş ^2+ veya ^2− biçimini kontrol et.
+  let chargeMatch = body.match(/\^(\d+)?([+\-−])$/);
+
+  if (chargeMatch) {
+    const magnitude = Number(chargeMatch[1] || 1);
+    charge = chargeMatch[2] === '+' ? magnitude : -magnitude;
+    body = body.slice(0, chargeMatch.index);
+  } else {
+    // Ba2+, Cl− ve Na+ gibi gösterimleri oku.
+    chargeMatch = body.match(/(\d+)?([+\-−])$/);
+
+    if (chargeMatch) {
+      const magnitude = Number(chargeMatch[1] || 1);
+      charge = chargeMatch[2] === '+' ? magnitude : -magnitude;
+      body = body.slice(0, chargeMatch.index);
+    }
+  }
+
+  if (!body || !countAtoms(body)) return null;
+
+  return {
+    formula: body,
+    coefficient,
+    charge
+  };
+}
+
+function splitSide(side: string): Species[] | null {
+  const tokens = side.trim().split(/\s+\+\s+/);
+
+  if (!tokens.length) return null;
+
+  const result: Species[] = [];
+
+  for (const token of tokens) {
+    const species = parseSpecies(token);
+
+    if (!species) return null;
+
+    result.push(species);
   }
 
   return result;
@@ -203,6 +217,13 @@ function validateBalance(equation: string) {
   };
 }
 
+function normalizeIon(ion: string): string {
+  return ion
+    .replace(/\s/g, '')
+    .replace(/−/g, '-')
+    .replace(/\^/g, '');
+}
+
 function ionKey(species: Species): string {
   const sign = species.charge > 0 ? '+' : '-';
   const magnitude = Math.abs(species.charge);
@@ -225,10 +246,7 @@ function findSpectatorIons(
 
     const key = ionKey(species);
 
-    left.set(
-      key,
-      (left.get(key) || 0) + species.coefficient
-    );
+    left.set(key, (left.get(key) || 0) + species.coefficient);
   }
 
   for (const species of parsed.right) {
@@ -236,22 +254,12 @@ function findSpectatorIons(
 
     const key = ionKey(species);
 
-    right.set(
-      key,
-      (right.get(key) || 0) + species.coefficient
-    );
+    right.set(key, (right.get(key) || 0) + species.coefficient);
   }
 
   return [...left.entries()]
     .filter(([ion, amount]) => right.get(ion) === amount)
     .map(([ion]) => ion);
-}
-
-function normalizeIon(ion: string): string {
-  return ion
-    .replace(/\s/g, '')
-    .replace(/−/g, '-')
-    .replace(/\^/g, '');
 }
 
 export function validateIonicEquation(
