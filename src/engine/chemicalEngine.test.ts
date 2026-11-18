@@ -6,6 +6,8 @@ import {
   analyzeSubstances
 } from './chemicalEngine';
 import { validateAllReactions } from './reactionDatabaseAnalyzer';
+import { validateIonicEquation } from './ionicEquationAnalyzer';
+import { reactions } from '../data/reactions';
 
 describe('Kimyasal motor testleri', () => {
   it('NaCl formülünü doğru okur', () => {
@@ -31,9 +33,7 @@ describe('Kimyasal motor testleri', () => {
         { formula: 'H2', coefficient: 2 },
         { formula: 'O2', coefficient: 1 }
       ],
-      [
-        { formula: 'H2O', coefficient: 2 }
-      ]
+      [{ formula: 'H2O', coefficient: 2 }]
     );
 
     expect(result.reactionBalance?.balanced).toBe(true);
@@ -45,9 +45,7 @@ describe('Kimyasal motor testleri', () => {
         { formula: 'H2', coefficient: 1 },
         { formula: 'O2', coefficient: 1 }
       ],
-      [
-        { formula: 'H2O', coefficient: 1 }
-      ]
+      [{ formula: 'H2O', coefficient: 1 }]
     );
 
     expect(result.reactionBalance?.balanced).toBe(false);
@@ -60,7 +58,9 @@ describe('Kimyasal motor testleri', () => {
     ]);
 
     expect(
-      result.warnings.some(warning => warning.includes('veritabanında'))
+      result.warnings.some(warning =>
+        warning.includes('veritabanında')
+      )
     ).toBe(true);
   });
 
@@ -78,6 +78,33 @@ describe('Kimyasal motor testleri', () => {
       expect(
         result.balanced,
         `${result.name} reaksiyonu dengeli değil.`
+      ).toBe(true);
+    }
+  });
+
+  it('Bütün tam iyonik ve net iyonik denklemler dengelidir', () => {
+    for (const reaction of reactions) {
+      const result = validateIonicEquation(reaction);
+
+      expect(
+        result.atomBalanced,
+        `${reaction.name}: atom dengesi hatalı. ${result.errors.join(' ')}`
+      ).toBe(true);
+
+      expect(
+        result.chargeBalanced,
+        `${reaction.name}: yük dengesi hatalı. ${result.errors.join(' ')}`
+      ).toBe(true);
+    }
+  });
+
+  it('Bütün seyirci iyonlar doğru belirlenmiştir', () => {
+    for (const reaction of reactions) {
+      const result = validateIonicEquation(reaction);
+
+      expect(
+        result.spectatorIonsValid,
+        `${reaction.name}: seyirci iyonlar hatalı.`
       ).toBe(true);
     }
   });
