@@ -32,6 +32,9 @@ jobs:
       - name: Bagimliliklari yukle
         run: npm install
 
+      - name: Kimya motoru testlerini calistir
+        run: npm test
+
       - name: Projeyi derle
         run: npm run build
 
@@ -48,6 +51,9 @@ jobs:
     needs: build
 
     steps:
+      - name: Kodlari indir
+        uses: actions/checkout@v4
+
       - name: GitHub Pages'e yayinla
         id: deployment
         uses: actions/deploy-pages@v4
