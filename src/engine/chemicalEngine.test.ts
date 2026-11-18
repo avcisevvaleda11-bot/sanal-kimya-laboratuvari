@@ -1,7 +1,11 @@
 
 import { describe, expect, it } from 'vitest';
 import { analyzeFormula } from './formulaParser';
-import { analyzeChemicalReaction, analyzeSubstances } from './chemicalEngine';
+import {
+  analyzeChemicalReaction,
+  analyzeSubstances
+} from './chemicalEngine';
+import { validateAllReactions } from './reactionDatabaseAnalyzer';
 
 describe('Kimyasal motor testleri', () => {
   it('NaCl formülünü doğru okur', () => {
@@ -58,5 +62,23 @@ describe('Kimyasal motor testleri', () => {
     expect(
       result.warnings.some(warning => warning.includes('veritabanında'))
     ).toBe(true);
+  });
+
+  it('Veritabanındaki bütün reaksiyonları kontrol eder', () => {
+    const results = validateAllReactions();
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every(result => result.valid)).toBe(true);
+  });
+
+  it('Bütün kayıtlı reaksiyonlar dengeli olmalıdır', () => {
+    const results = validateAllReactions();
+
+    for (const result of results) {
+      expect(
+        result.balanced,
+        `${result.name} reaksiyonu dengeli değil.`
+      ).toBe(true);
+    }
   });
 });
