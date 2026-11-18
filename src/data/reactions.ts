@@ -160,7 +160,7 @@ export const reactions: ReactionData[] = [
     name: "Baryum sülfat çökelme tepkimesi",
 
     reactants: ["BaCl2", "Na2SO4"],
-    products: ["BaSO4", "NaCl"],
+products: ["BaSO4", "2NaCl"],
 
     balancedEquation:
       "BaCl2(aq) + Na2SO4(aq) → BaSO4(s) + 2NaCl(aq)",
