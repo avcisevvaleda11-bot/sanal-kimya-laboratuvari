@@ -1,63 +1,27 @@
+
+import { describe, expect, it } from 'vitest';
 import { analyzeFormula } from './formulaParser';
 import { analyzeChemicalReaction, analyzeSubstances } from './chemicalEngine';
 
-export interface TestResult {
-  name: string;
-  passed: boolean;
-  message: string;
-}
-
-function assert(
-  condition: boolean,
-  message: string
-): void {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-export function runChemicalEngineTests(): TestResult[] {
-  const results: TestResult[] = [];
-
-  function test(name: string, action: () => void) {
-    try {
-      action();
-
-      results.push({
-        name,
-        passed: true,
-        message: 'Test başarılı.'
-      });
-    } catch (error) {
-      results.push({
-        name,
-        passed: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Bilinmeyen test hatası.'
-      });
-    }
-  }
-
-  test('NaCl formülünü okuma', () => {
+describe('Kimyasal motor testleri', () => {
+  it('NaCl formülünü doğru okur', () => {
     const result = analyzeFormula('NaCl');
 
-    assert(result.valid, 'NaCl okunamadı.');
-    assert(result.atoms.Na === 1, 'Na sayısı yanlış.');
-    assert(result.atoms.Cl === 1, 'Cl sayısı yanlış.');
+    expect(result.valid).toBe(true);
+    expect(result.atoms.Na).toBe(1);
+    expect(result.atoms.Cl).toBe(1);
   });
 
-  test('Parantezli formül okuma', () => {
+  it('Parantezli formülü doğru okur', () => {
     const result = analyzeFormula('Ca(OH)2');
 
-    assert(result.valid, 'Formül okunamadı.');
-    assert(result.atoms.Ca === 1, 'Ca sayısı yanlış.');
-    assert(result.atoms.O === 2, 'O sayısı yanlış.');
-    assert(result.atoms.H === 2, 'H sayısı yanlış.');
+    expect(result.valid).toBe(true);
+    expect(result.atoms.Ca).toBe(1);
+    expect(result.atoms.O).toBe(2);
+    expect(result.atoms.H).toBe(2);
   });
 
-  test('Dengeli su oluşumu denklemi', () => {
+  it('Dengeli denklemi doğru tanır', () => {
     const result = analyzeChemicalReaction(
       [
         { formula: 'H2', coefficient: 2 },
@@ -68,13 +32,10 @@ export function runChemicalEngineTests(): TestResult[] {
       ]
     );
 
-    assert(
-      result.reactionBalance?.balanced === true,
-      'Denklem dengeli olarak algılanmadı.'
-    );
+    expect(result.reactionBalance?.balanced).toBe(true);
   });
 
-  test('Dengesiz su oluşumu denklemi', () => {
+  it('Dengesiz denklemi doğru tanır', () => {
     const result = analyzeChemicalReaction(
       [
         { formula: 'H2', coefficient: 1 },
@@ -85,25 +46,17 @@ export function runChemicalEngineTests(): TestResult[] {
       ]
     );
 
-    assert(
-      result.reactionBalance?.balanced === false,
-      'Denklem dengesiz olarak algılanmadı.'
-    );
+    expect(result.reactionBalance?.balanced).toBe(false);
   });
 
-  test('Bilinmeyen madde uyarısı', () => {
+  it('Bilinmeyen madde için uyarı verir', () => {
     const result = analyzeSubstances([
       { formula: 'NaCl' },
       { formula: 'XeF6' }
     ]);
 
-    assert(
-      result.warnings.some(warning =>
-        warning.includes('veritabanında')
-      ),
-      'Bilinmeyen madde uyarısı verilmedi.'
-    );
+    expect(
+      result.warnings.some(warning => warning.includes('veritabanında'))
+    ).toBe(true);
   });
-
-  return results;
-}
+});
