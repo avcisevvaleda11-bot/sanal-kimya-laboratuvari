@@ -13,49 +13,49 @@ interface Species {
   formula: string;
   coefficient: number;
   charge: number;
-  state: string;
 }
 
 function parseSpecies(token: string): Species | null {
   const match = token.trim().match(
-    /^(\d+)?\s*([A-Za-z0-9()]+?)(?:\^(\d+)?([+-])|(\d+)?([+-]))?\((aq|s|l|g)\)$/
+    /^(\d+)?\s*([A-Za-z0-9()]+)(?:\^(\d+)?([+\-−])|(\d+)?([+\-−]))?\((aq|s|l|g)\)$/
   );
 
   if (!match) return null;
 
   const coefficient = Number(match[1] || 1);
   const formula = match[2];
-
   const chargeMagnitude = Number(match[3] || match[5] || 1);
   const chargeSign = match[4] || match[6] || '';
-
-  const charge =
-    chargeSign === '+' ? chargeMagnitude :
-    chargeSign === '-' ? -chargeMagnitude : 0;
 
   if (!Number.isInteger(coefficient) || coefficient < 1) {
     return null;
   }
 
-  return {
-    formula,
-    coefficient,
-    charge,
-    state: match[7]
-  };
+  const charge =
+    chargeSign === '+' ? chargeMagnitude :
+    chargeSign === '-' || chargeSign === '−'
+      ? -chargeMagnitude
+      : 0;
+
+  return { formula, coefficient, charge };
 }
 
 function splitSide(side: string): Species[] | null {
-  const tokens = side.split(/\s+\+\s+/);
-  const species: Species[] = [];
+  const tokens = side.trim().split(/\s+\+\s+/);
 
-  for (const token of tokens) {
-    const parsed = parseSpecies(token);
-    if (!parsed) return null;
-    species.push(parsed);
+  if (!tokens.length || tokens.some(token => !token.trim())) {
+    return null;
   }
 
-  return species;
+  const result: Species[] = [];
+
+  for (const token of tokens) {
+    const species = parseSpecies(token);
+    if (!species) return null;
+    result.push(species);
+  }
+
+  return result;
 }
 
 function countAtoms(
@@ -136,8 +136,8 @@ function parseEquation(equation: string) {
 
   if (sides.length !== 2) return null;
 
-  const left = splitSide(sides[0].trim());
-  const right = splitSide(sides[1].trim());
+  const left = splitSide(sides[0]);
+  const right = splitSide(sides[1]);
 
   if (!left || !right) return null;
 
@@ -155,16 +155,12 @@ function validateBalance(equation: string) {
     };
   }
 
-  const atomTotals = [
-    {} as Record<string, number>,
-    {} as Record<string, number>
-  ];
-
+  const atomTotals: Record<string, number>[] = [{}, {}];
   const chargeTotals = [0, 0];
 
   const sides = [parsed.left, parsed.right];
 
-  for (let sideIndex = 0; sideIndex < sides.length; sideIndex++) {
+  for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
     for (const species of sides[sideIndex]) {
       const atoms = countAtoms(species.formula);
 
@@ -207,11 +203,11 @@ function validateBalance(equation: string) {
   };
 }
 
-function normalizeIon(ion: string): string {
-  return ion
-    .replace(/\s/g, '')
-    .replace(/−/g, '-')
-    .replace(/\^/g, '');
+function ionKey(species: Species): string {
+  const sign = species.charge > 0 ? '+' : '-';
+  const magnitude = Math.abs(species.charge);
+
+  return `${species.formula}${sign}${magnitude === 1 ? '' : magnitude}`;
 }
 
 function findSpectatorIons(
@@ -227,13 +223,7 @@ function findSpectatorIons(
   for (const species of parsed.left) {
     if (species.charge === 0) continue;
 
-    const key = normalizeIon(
-      species.formula +
-      (species.charge > 0 ? '+' : '-') +
-      (Math.abs(species.charge) === 1
-        ? ''
-        : Math.abs(species.charge))
-    );
+    const key = ionKey(species);
 
     left.set(
       key,
@@ -244,13 +234,7 @@ function findSpectatorIons(
   for (const species of parsed.right) {
     if (species.charge === 0) continue;
 
-    const key = normalizeIon(
-      species.formula +
-      (species.charge > 0 ? '+' : '-') +
-      (Math.abs(species.charge) === 1
-        ? ''
-        : Math.abs(species.charge))
-    );
+    const key = ionKey(species);
 
     right.set(
       key,
@@ -261,6 +245,13 @@ function findSpectatorIons(
   return [...left.entries()]
     .filter(([ion, amount]) => right.get(ion) === amount)
     .map(([ion]) => ion);
+}
+
+function normalizeIon(ion: string): string {
+  return ion
+    .replace(/\s/g, '')
+    .replace(/−/g, '-')
+    .replace(/\^/g, '');
 }
 
 export function validateIonicEquation(
@@ -296,14 +287,14 @@ export function validateIonicEquation(
     .map(normalizeIon)
     .sort();
 
-  const actual = (foundSpectators || []).sort();
+  const actual = (foundSpectators || [])
+    .map(normalizeIon)
+    .sort();
 
   const spectatorIonsValid =
     foundSpectators !== null &&
     expected.length === actual.length &&
-    expected.every(
-      (ion, index) => ion === actual[index]
-    );
+    expected.every((ion, index) => ion === actual[index]);
 
   if (!spectatorIonsValid) {
     errors.push(
@@ -317,11 +308,9 @@ export function validateIonicEquation(
       net.valid &&
       spectatorIonsValid,
     atomBalanced:
-      complete.atomBalanced &&
-      net.atomBalanced,
+      complete.atomBalanced && net.atomBalanced,
     chargeBalanced:
-      complete.chargeBalanced &&
-      net.chargeBalanced,
+      complete.chargeBalanced && net.chargeBalanced,
     spectatorIonsValid,
     errors
   };
