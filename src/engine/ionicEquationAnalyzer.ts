@@ -15,9 +15,7 @@ interface Species {
   charge: number;
 }
 
-function countAtoms(
-  formula: string
-): Record<string, number> | null {
+function countAtoms(formula: string): Record<string, number> | null {
   const tokens = formula.match(/[A-Z][a-z]?|\d+|\(|\)/g);
 
   if (!tokens || tokens.join('') !== formula) return null;
@@ -37,18 +35,15 @@ function countAtoms(
 
       if (token === '(') {
         index++;
-
         const inner = parseGroup();
         if (!inner) return null;
 
         const multiplier = Number(tokens[index]) || 1;
-
         if (/^\d+$/.test(tokens[index] || '')) index++;
 
         for (const element in inner) {
           counts[element] =
-            (counts[element] || 0) +
-            inner[element] * multiplier;
+            (counts[element] || 0) + inner[element] * multiplier;
         }
 
         continue;
@@ -56,14 +51,11 @@ function countAtoms(
 
       if (/^[A-Z][a-z]?$/.test(token)) {
         index++;
-
         const multiplier = Number(tokens[index]) || 1;
 
         if (/^\d+$/.test(tokens[index] || '')) index++;
 
-        counts[token] =
-          (counts[token] || 0) + multiplier;
-
+        counts[token] = (counts[token] || 0) + multiplier;
         continue;
       }
 
@@ -81,11 +73,12 @@ function countAtoms(
 }
 
 function parseSpecies(token: string): Species | null {
-  const stateMatch = token.trim().match(/\((aq|s|l|g)\)$/);
+  const trimmed = token.trim();
+  const stateMatch = trimmed.match(/\((aq|s|l|g)\)$/);
 
-  if (!stateMatch) return null;
+  if (!stateMatch || stateMatch.index === undefined) return null;
 
-  let body = token.trim().slice(0, stateMatch.index);
+  let body = trimmed.slice(0, stateMatch.index);
 
   const coefficientMatch = body.match(/^(\d+)\s*/);
   const coefficient = Number(coefficientMatch?.[1] || 1);
@@ -94,37 +87,29 @@ function parseSpecies(token: string): Species | null {
     body = body.slice(coefficientMatch[0].length);
   }
 
-  if (!Number.isInteger(coefficient) || coefficient < 1) {
-    return null;
-  }
+  if (!Number.isInteger(coefficient) || coefficient < 1) return null;
 
   let charge = 0;
 
-  // Önce açıkça belirtilmiş ^2+ veya ^2− biçimini kontrol et.
-  let chargeMatch = body.match(/\^(\d+)?([+\-−])$/);
+  const caretCharge = body.match(/\^(\d+)?([+\-−])$/);
 
-  if (chargeMatch) {
-    const magnitude = Number(chargeMatch[1] || 1);
-    charge = chargeMatch[2] === '+' ? magnitude : -magnitude;
-    body = body.slice(0, chargeMatch.index);
+  if (caretCharge && caretCharge.index !== undefined) {
+    const magnitude = Number(caretCharge[1] || 1);
+    charge = caretCharge[2] === '+' ? magnitude : -magnitude;
+    body = body.slice(0, caretCharge.index);
   } else {
-    // Ba2+, Cl− ve Na+ gibi gösterimleri oku.
-    chargeMatch = body.match(/(\d+)?([+\-−])$/);
+    const simpleCharge = body.match(/(\d+)?([+\-−])$/);
 
-    if (chargeMatch) {
-      const magnitude = Number(chargeMatch[1] || 1);
-      charge = chargeMatch[2] === '+' ? magnitude : -magnitude;
-      body = body.slice(0, chargeMatch.index);
+    if (simpleCharge && simpleCharge.index !== undefined) {
+      const magnitude = Number(simpleCharge[1] || 1);
+      charge = simpleCharge[2] === '+' ? magnitude : -magnitude;
+      body = body.slice(0, simpleCharge.index);
     }
   }
 
   if (!body || !countAtoms(body)) return null;
 
-  return {
-    formula: body,
-    coefficient,
-    charge
-  };
+  return { formula: body, coefficient, charge };
 }
 
 function splitSide(side: string): Species[] | null {
@@ -136,9 +121,7 @@ function splitSide(side: string): Species[] | null {
 
   for (const token of tokens) {
     const species = parseSpecies(token);
-
     if (!species) return null;
-
     result.push(species);
   }
 
@@ -171,7 +154,6 @@ function validateBalance(equation: string) {
 
   const atomTotals: Record<string, number>[] = [{}, {}];
   const chargeTotals = [0, 0];
-
   const sides = [parsed.left, parsed.right];
 
   for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
@@ -203,12 +185,10 @@ function validateBalance(equation: string) {
   ]);
 
   const atomBalanced = [...elements].every(
-    element =>
-      atomTotals[0][element] === atomTotals[1][element]
+    element => atomTotals[0][element] === atomTotals[1][element]
   );
 
-  const chargeBalanced =
-    chargeTotals[0] === chargeTotals[1];
+  const chargeBalanced = chargeTotals[0] === chargeTotals[1];
 
   return {
     valid: atomBalanced && chargeBalanced,
@@ -225,15 +205,10 @@ function normalizeIon(ion: string): string {
 }
 
 function ionKey(species: Species): string {
-  const sign = species.charge > 0 ? '+' : '-';
-  const magnitude = Math.abs(species.charge);
-
-  return `${species.formula}${sign}${magnitude === 1 ? '' : magnitude}`;
+  return `${species.formula}|${species.charge}`;
 }
 
-function findSpectatorIons(
-  equation: string
-): string[] | null {
+function findSpectatorIons(equation: string): string[] | null {
   const parsed = parseEquation(equation);
 
   if (!parsed) return null;
@@ -245,7 +220,6 @@ function findSpectatorIons(
     if (species.charge === 0) continue;
 
     const key = ionKey(species);
-
     left.set(key, (left.get(key) || 0) + species.coefficient);
   }
 
@@ -253,13 +227,19 @@ function findSpectatorIons(
     if (species.charge === 0) continue;
 
     const key = ionKey(species);
-
     right.set(key, (right.get(key) || 0) + species.coefficient);
   }
 
   return [...left.entries()]
     .filter(([ion, amount]) => right.get(ion) === amount)
-    .map(([ion]) => ion);
+    .map(([ion]) => {
+      const [formula, chargeText] = ion.split('|');
+      const charge = Number(chargeText);
+      const sign = charge > 0 ? '+' : '−';
+      const magnitude = Math.abs(charge);
+
+      return `${formula}${magnitude === 1 ? '' : magnitude}${sign}`;
+    });
 }
 
 export function validateIonicEquation(
@@ -267,13 +247,8 @@ export function validateIonicEquation(
 ): IonicEquationValidation {
   const errors: string[] = [];
 
-  const complete = validateBalance(
-    reaction.completeIonicEquation
-  );
-
-  const net = validateBalance(
-    reaction.netIonicEquation
-  );
+  const complete = validateBalance(reaction.completeIonicEquation);
+  const net = validateBalance(reaction.netIonicEquation);
 
   if (!complete.valid) {
     errors.push(
@@ -305,20 +280,13 @@ export function validateIonicEquation(
     expected.every((ion, index) => ion === actual[index]);
 
   if (!spectatorIonsValid) {
-    errors.push(
-      'Seyirci iyon listesi tam iyonik denklemle uyuşmuyor.'
-    );
+    errors.push('Seyirci iyon listesi tam iyonik denklemle uyuşmuyor.');
   }
 
   return {
-    valid:
-      complete.valid &&
-      net.valid &&
-      spectatorIonsValid,
-    atomBalanced:
-      complete.atomBalanced && net.atomBalanced,
-    chargeBalanced:
-      complete.chargeBalanced && net.chargeBalanced,
+    valid: complete.valid && net.valid && spectatorIonsValid,
+    atomBalanced: complete.atomBalanced && net.atomBalanced,
+    chargeBalanced: complete.chargeBalanced && net.chargeBalanced,
     spectatorIonsValid,
     errors
   };
